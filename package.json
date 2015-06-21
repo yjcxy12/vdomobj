@@ -1,0 +1,11 @@
+{
+  "name": "vdomobj",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "yjcxy12 <yjcxy12@gmail.com>",
+  "license": "MIT"
+}
