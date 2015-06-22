@@ -1,6 +1,7 @@
 'use strict';
 
 var vdomutil = require('./vdomutil');
+var vdomdiff = require('./vdomdiff');
 var VnodeObj = require('./vnodeobj');
 
 function VtreeObj(VdomObj) {
@@ -15,9 +16,7 @@ function VtreeObj(VdomObj) {
 
 		props: {},
 
-		render: function () {
-
-		},
+		render: function () {},
 
 		node: function (tag) {
 			var vnode = new VnodeObj(tag);
@@ -25,23 +24,24 @@ function VtreeObj(VdomObj) {
 		},
 
 		updateNode: function () {
-			// var operations = this.diff(this._vnode, this.render());
-			var newEle = this.toDomElement(this.render());
+			// var operations = vdomdiff.diff(this._vnode, this.render());
+			var newEle = this.render();
 			this._parent.removeChild(this._element);
-			this.appendElement(newEle, this._parent);
+			this._parent.appendChild(this.toDomElement(newEle));
 		},
 
-		appendElement: function (element, parent) {
-			this._element = element;
+		appendElement: function (vdom, parent) {
+			if (!this.isVdom(vdom)) {
+				vdomutil.throwError('Element is not an instance of VdomObj');
+			}
 			this._parent = parent;
-			parent.appendChild(element);
+			parent.appendChild(this.toDomElement(vdom._vnode));
 		},
 
 		createElement: function (obj) {
-			this.props = obj.props;
-			this.render = obj.render.bind(this);
+			vdomutil.extend(this, obj);
 			this._vnode = this.render();
-			return this.toDomElement(this._vnode);
+			return this;
 		},
 
 		toDomElement: function (vnode) {
@@ -52,13 +52,10 @@ function VtreeObj(VdomObj) {
 			var element = document.createElement(vnode.tag);
 
 			self.asignAttr(element, vnode.attribute);
-
+			self.asignStyle(element, vnode.style);
 			self.asignClass(element, vnode.className);
-
 			self.asignFunction(element, vnode.funcDic, vnode);
-
 			element.innerHTML = vnode.innerText;
-
 			vnode.children.map(function (childNode) {
 				var childEle = self.toDomElement(childNode);
 				if (childEle) {
@@ -66,6 +63,7 @@ function VtreeObj(VdomObj) {
 				}
 			});
 
+			this._element = element;
 			return element;
 		},
 
@@ -87,21 +85,33 @@ function VtreeObj(VdomObj) {
 			});
 		},
 
+		asignStyle: function (element, styleObj) {
+			vdomutil.iterObj(styleObj, function (val, key) {
+				element.style[key] = val;
+			});
+		},
+
 		asignFunction: function (element, funcDic, vnode) {
 			var self = this;
 			vdomutil.iterObj(funcDic, function (callbackLst, name) {
 				callbackLst.map(function (callback) {
-					element.addEventListener(name, callback.bind(element, vnode, self._vnode));
+					element.addEventListener(name, callback.bind(self, vnode, element));
 				});
 			});
 		},
 
 		asignClass: function (element, classes) {
-			element.className = classes.join(' ');
+			if (classes.length > 0) {
+				element.className = classes.join(' ');
+			}
+		},
+
+		isVdom: function (obj) {
+			return obj instanceof VdomObj;
 		}
 	};
 
-	vdomutil.extend(VdomObj, ext);
+	vdomutil.extend(VdomObj.prototype, ext);
 }
 
 module.exports = VtreeObj;

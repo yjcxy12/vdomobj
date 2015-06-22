@@ -13,6 +13,8 @@ function VnodeObj(tag) {
 
 		attribute: {},
 
+		style: {},
+
 		children: [],
 
 		funcDic: {},
@@ -27,9 +29,15 @@ function VnodeObj(tag) {
 			if (val === undefined) {
 				return this.attribute[attr];
 			}
-			else {
-				this.attribute[attr] = val;
+			this.attribute[attr] = val;
+			return this;
+		},
+
+		css: function (css, val) {
+			if (val === undefined) {
+				return this.style[css];
 			}
+			this.style[css] = val;
 			return this;
 		},
 
@@ -62,6 +70,9 @@ function VnodeObj(tag) {
 		},
 
 		text: function (text) {
+			if (text === undefined) {
+				return this.text;
+			}
 			this.innerText = text;
 			return this;
 		},
@@ -94,6 +105,6 @@ function VnodeObj(tag) {
 			return this;
 		}
 	};
-};
+}
 
 module.exports = VnodeObj;

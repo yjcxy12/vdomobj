@@ -1,57 +1,113 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 var VdomObj = require('../index');
 
 document.addEventListener("DOMContentLoaded", function() { 
 
-	var element = VdomObj.createElement( {
+	var todoItems = [
+		{
+			name: 'first item'
+		}, {
+			name: 'second item'
+		}, {
+			name: 'third item'
+		}, {
+			name: 'fouth item'
+		}, {
+			name: 'fifth item'
+		},
+	];
+
+	var Vdiv = VdomObj.createElement( {
+
 		props: {
-			items: 5
+			items: todoItems,
+			newItem: ''
+		},
+
+		addItem: function (vnode) {
+			if (this.props.newItem.trim() === '') {
+				alert('please enter text');
+				return;
+			}
+			this.props.items.push({
+				name: this.props.newItem
+			});
+			this.updateNode();
+		},
+
+		deleteItem: function (item, vnode) {
+			this.props.items.map(function (val, i) {
+				if (item === val) {
+					this.props.items.splice(i, 1);
+				}
+			}, this);
+			this.updateNode();
+		},
+
+		inputChanged: function (vnode, elem) {
+			this.props.newItem = elem.value;
 		},
 
 		render: function () {
 			var self = this;
 			var node = VdomObj
 				.node('div')
-				.addClass('btn btn-default')
-				.on('click', function (vnode) {
-					vnode.addClass('pull-right list-group-item');
-					VdomObj.updateNode();
-				});
+				.addClass('container');
 
-			var input_group = node.append('div');
+			var input_group = node.append('div')
+				.addClass('input-group');
+
 			var input = input_group
-				.append('input');
+				.append('input')
+				.addClass('form-control')
+				.on('change', this.inputChanged);
 
 			var addBtn = input_group
-				.append('button')
-				.addClass('btn btn-primary')
-				.on('click', function (vnode) {
-					self.props.items++;
-					VdomObj.updateNode();
-				})
+				.append('span')
+					.addClass('input-group-btn')
+					.append('button')
+						.addClass('btn btn-primary')
+						.on('click', this.addItem)
+						.append('span')
+							.addClass('glyphicon glyphicon-plus');
 
 			var ul = node.append('ul')
 				.addClass('list-group');
 
-			for (var i = 0; i < this.props.items; i++) {
+			this.props.items.map(function (item) {
 				ul.append('li')
 					.addClass('list-group-item')
-					.text('this is the ' + i + 'th item');
-			}
+					.text(item.name)
+					.append('button')
+						.addClass('btn btn-danger pull-right')
+						.css('margin-top', '-8px')
+						.css('margin-right', '-12px')
+						.on('click', self.deleteItem.bind(self, item))
+						.append('span')
+							.addClass('glyphicon glyphicon-minus');
+			});
 
 			return node;
 		}
 	});
 
-	VdomObj.appendElement(element, document.getElementById('main-display'));
+	VdomObj.appendElement(Vdiv, document.getElementById('main-display'));
 });
 },{"../index":2}],2:[function(require,module,exports){
 var VdomObj = function () {};
 
-require('./src/vtreeobj')(VdomObj.prototype);
+require('./src/vtreeobj')(VdomObj);
 
 module.exports = new VdomObj();
-},{"./src/vtreeobj":5}],3:[function(require,module,exports){
+},{"./src/vtreeobj":6}],3:[function(require,module,exports){
+'use strict';
+
+module.exports = {
+	diff: function (old, current) {
+		
+	}
+};
+},{}],4:[function(require,module,exports){
 module.exports = {
 
 	throwError: function (err) {
@@ -76,7 +132,7 @@ module.exports = {
 		}
 	}
 };
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 'use strict';
 
 var vdomutil = require('./vdomutil');
@@ -92,6 +148,8 @@ function VnodeObj(tag) {
 
 		attribute: {},
 
+		style: {},
+
 		children: [],
 
 		funcDic: {},
@@ -106,9 +164,15 @@ function VnodeObj(tag) {
 			if (val === undefined) {
 				return this.attribute[attr];
 			}
-			else {
-				this.attribute[attr] = val;
+			this.attribute[attr] = val;
+			return this;
+		},
+
+		css: function (css, val) {
+			if (val === undefined) {
+				return this.style[css];
 			}
+			this.style[css] = val;
 			return this;
 		},
 
@@ -141,6 +205,9 @@ function VnodeObj(tag) {
 		},
 
 		text: function (text) {
+			if (text === undefined) {
+				return this.text;
+			}
 			this.innerText = text;
 			return this;
 		},
@@ -173,13 +240,14 @@ function VnodeObj(tag) {
 			return this;
 		}
 	};
-};
+}
 
 module.exports = VnodeObj;
-},{"./vdomutil":3}],5:[function(require,module,exports){
+},{"./vdomutil":4}],6:[function(require,module,exports){
 'use strict';
 
 var vdomutil = require('./vdomutil');
+var vdomdiff = require('./vdomdiff');
 var VnodeObj = require('./vnodeobj');
 
 function VtreeObj(VdomObj) {
@@ -194,9 +262,7 @@ function VtreeObj(VdomObj) {
 
 		props: {},
 
-		render: function () {
-
-		},
+		render: function () {},
 
 		node: function (tag) {
 			var vnode = new VnodeObj(tag);
@@ -204,22 +270,24 @@ function VtreeObj(VdomObj) {
 		},
 
 		updateNode: function () {
-			var newEle = this.toDomElement(this.render());
+			// var operations = vdomdiff.diff(this._vnode, this.render());
+			var newEle = this.render();
 			this._parent.removeChild(this._element);
-			this.appendElement(newEle, this._parent);
+			this._parent.appendChild(this.toDomElement(newEle));
 		},
 
-		appendElement: function (element, parent) {
-			this._element = element;
+		appendElement: function (vdom, parent) {
+			if (!this.isVdom(vdom)) {
+				vdomutil.throwError('Element is not an instance of VdomObj');
+			}
 			this._parent = parent;
-			parent.appendChild(element);
+			parent.appendChild(this.toDomElement(vdom._vnode));
 		},
 
 		createElement: function (obj) {
-			this.props = obj.props;
-			this.render = obj.render.bind(this);
+			vdomutil.extend(this, obj);
 			this._vnode = this.render();
-			return this.toDomElement(this._vnode);
+			return this;
 		},
 
 		toDomElement: function (vnode) {
@@ -230,13 +298,10 @@ function VtreeObj(VdomObj) {
 			var element = document.createElement(vnode.tag);
 
 			self.asignAttr(element, vnode.attribute);
-
+			self.asignStyle(element, vnode.style);
 			self.asignClass(element, vnode.className);
-
 			self.asignFunction(element, vnode.funcDic, vnode);
-
 			element.innerHTML = vnode.innerText;
-
 			vnode.children.map(function (childNode) {
 				var childEle = self.toDomElement(childNode);
 				if (childEle) {
@@ -244,6 +309,7 @@ function VtreeObj(VdomObj) {
 				}
 			});
 
+			this._element = element;
 			return element;
 		},
 
@@ -265,22 +331,34 @@ function VtreeObj(VdomObj) {
 			});
 		},
 
+		asignStyle: function (element, styleObj) {
+			vdomutil.iterObj(styleObj, function (val, key) {
+				element.style[key] = val;
+			});
+		},
+
 		asignFunction: function (element, funcDic, vnode) {
 			var self = this;
 			vdomutil.iterObj(funcDic, function (callbackLst, name) {
 				callbackLst.map(function (callback) {
-					element.addEventListener(name, callback.bind(element, vnode, self._vnode));
+					element.addEventListener(name, callback.bind(self, vnode, element));
 				});
 			});
 		},
 
 		asignClass: function (element, classes) {
-			element.className = classes.join(' ');
+			if (classes.length > 0) {
+				element.className = classes.join(' ');
+			}
+		},
+
+		isVdom: function (obj) {
+			return obj instanceof VdomObj;
 		}
 	};
 
-	vdomutil.extend(VdomObj, ext);
+	vdomutil.extend(VdomObj.prototype, ext);
 }
 
 module.exports = VtreeObj;
-},{"./vdomutil":3,"./vnodeobj":4}]},{},[1]);
+},{"./vdomdiff":3,"./vdomutil":4,"./vnodeobj":5}]},{},[1])
