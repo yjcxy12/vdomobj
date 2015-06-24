@@ -16,6 +16,33 @@ document.addEventListener("DOMContentLoaded", function() {
 		},
 	];
 
+	var Vitem = VdomObj.createElement( {
+
+		deleteItem: function (item, vnode) {
+			this.props.items.map(function (val, i) {
+				if (item === val) {
+					this.props.items.splice(i, 1);
+				}
+			}, this);
+			this.updateNode();
+		},
+
+		render: function () {
+			var node = VdomObj.node('li')
+				.addClass('list-group-item')
+				.text(this.props.item.name);
+
+			node.append('button')
+				.addClass('btn btn-danger pull-right')
+				.css('margin-top', '-8px')
+				.css('margin-right', '-12px')
+				// .on('click', self.deleteItem.bind(self, item))
+				.append('span')
+					.addClass('glyphicon glyphicon-minus');
+			return node;
+		}
+	});
+
 	var Vdiv = VdomObj.createElement( {
 
 		props: {
@@ -31,15 +58,6 @@ document.addEventListener("DOMContentLoaded", function() {
 			this.props.items.push({
 				name: this.props.newItem
 			});
-			this.updateNode();
-		},
-
-		deleteItem: function (item, vnode) {
-			this.props.items.map(function (val, i) {
-				if (item === val) {
-					this.props.items.splice(i, 1);
-				}
-			}, this);
 			this.updateNode();
 		},
 
@@ -74,16 +92,7 @@ document.addEventListener("DOMContentLoaded", function() {
 				.addClass('list-group');
 
 			this.props.items.map(function (item) {
-				ul.append('li')
-					.addClass('list-group-item')
-					.text(item.name)
-					.append('button')
-						.addClass('btn btn-danger pull-right')
-						.css('margin-top', '-8px')
-						.css('margin-right', '-12px')
-						.on('click', self.deleteItem.bind(self, item))
-						.append('span')
-							.addClass('glyphicon glyphicon-minus');
+				ul.append(Vitem, {item: item});
 			});
 
 			return node;

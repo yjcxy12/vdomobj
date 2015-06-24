@@ -19,8 +19,17 @@ function VnodeObj(tag) {
 
 		funcDic: {},
 
-		append: function (tag) {
-			var vchild = new VnodeObj(tag);
+		append: function (vdom, props) {
+			var vchild;
+			if (vdomutil.isVdomObj(vdom)) {
+				//todo: bug, should be different objects, not changing properties on the same object.
+				vdom.props = props;
+				vdom._vnode = vdom.render();
+				vchild = vdom._vnode;
+			}
+			else if (typeof vdom === 'string'){
+				vchild = new VnodeObj(vdom);
+			}
 			this.children.push(vchild);
 			return vchild;
 		},

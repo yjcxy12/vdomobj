@@ -20,5 +20,10 @@ module.exports = {
 			var attrVal = obj[attr];
 			callback(attrVal, attr);
 		}
+	},
+
+	//duck typing
+	isVdomObj: function (obj) {
+		return typeof obj.isVdom === 'function';
 	}
 };
