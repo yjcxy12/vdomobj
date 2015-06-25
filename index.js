@@ -1,3 +1,3 @@
-var VtreeObj = require('./src/vtreeobj');
+var VdomObj = require('./src/vdomobj');
 
-module.exports = new VtreeObj();
+module.exports = new VdomObj();

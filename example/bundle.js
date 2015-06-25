@@ -20,12 +20,12 @@ document.addEventListener("DOMContentLoaded", function() {
 	var Vitem = VdomObj.createElement( {
 
 		deleteItem: function (item, vnode) {
-			this.props.items.map(function (val, i) {
+			todoItems.map(function (val, i) {
 				if (item === val) {
-					this.props.items.splice(i, 1);
+					todoItems.splice(i, 1);
 				}
 			}, this);
-			this.updateNode();
+			this.ref.updateNode();
 		},
 
 		render: function () {
@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", function() {
 				.addClass('btn btn-danger pull-right')
 				.css('margin-top', '-8px')
 				.css('margin-right', '-12px')
-				// .on('click', self.deleteItem.bind(self, item))
+				.on('click', this.deleteItem.bind(this, this.props.item))
 				.append('span')
 					.addClass('glyphicon glyphicon-minus');
 			return node;
@@ -93,8 +93,8 @@ document.addEventListener("DOMContentLoaded", function() {
 				.addClass('list-group');
 
 			this.props.items.map(function (item) {
-				ul.append(Vitem, {item: item});
-			});
+				ul.appendVdom(Vitem, {item: item}, this);
+			}, this);
 
 			return node;
 		}
@@ -103,10 +103,10 @@ document.addEventListener("DOMContentLoaded", function() {
 	VdomObj.appendElement(Vdiv, document.getElementById('main-display'));
 });
 },{"../index":2}],2:[function(require,module,exports){
-var VtreeObj = require('./src/vtreeobj');
+var VdomObj = require('./src/vdomobj');
 
-module.exports = new VtreeObj();
-},{"./src/vtreeobj":6}],3:[function(require,module,exports){
+module.exports = new VdomObj();
+},{"./src/vdomobj":4}],3:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -115,6 +115,44 @@ module.exports = {
 	}
 };
 },{}],4:[function(require,module,exports){
+
+'use strict';
+
+var vdomutil = require('./vdomutil');
+var vdomdiff = require('./vdomdiff');
+var VnodeObj = require('./vnodeobj');
+var VtreeObj = require('./vtreeobj');
+
+function VdomObj() {}
+
+VdomObj.prototype = {
+	node: function (tag) {
+		var	vnode = VnodeObj(tag);
+		return vnode;
+	},
+
+	createElement: function (obj) {
+		var vtree = VtreeObj();
+		vdomutil.extend(vtree, obj);
+		return vtree;
+	},
+
+	appendElement: function (vtree, parent) {
+		if (!vdomutil.isVdomObj(vtree)) {
+			vdomutil.throwError('Element is not an instance of VdomObj');
+		}
+		vtree._parent = parent;
+		if (vtree._vnode === undefined) {
+			vtree._vnode = vtree.render(vtree);
+		}
+		parent.appendChild(vtree.toDomElement(vtree._vnode));
+	},
+};
+
+module.exports = VdomObj;
+},{"./vdomdiff":3,"./vdomutil":5,"./vnodeobj":6,"./vtreeobj":7}],5:[function(require,module,exports){
+'use strict';
+
 module.exports = {
 
 	throwError: function (err) {
@@ -141,17 +179,17 @@ module.exports = {
 
 	//duck typing
 	isVdomObj: function (obj) {
-		return typeof obj.isVdom === 'function';
+		return typeof obj.updateNode === 'function';
 	}
 };
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 'use strict';
 
 var vdomutil = require('./vdomutil');
 
 function VnodeObj(tag) {
-
 	return {
+
 		tag: tag,
 
 		innerText: '',
@@ -166,19 +204,25 @@ function VnodeObj(tag) {
 
 		funcDic: {},
 
-		append: function (vdom, props) {
-			var vchild;
-			if (vdomutil.isVdomObj(vdom)) {
-				//todo: bug, should be different objects, not changing properties on the same object.
-				vdom.props = props;
-				vdom._vnode = vdom.render();
-				vchild = vdom._vnode;
-			}
-			else if (typeof vdom === 'string'){
-				vchild = new VnodeObj(vdom);
-			}
+		_element: undefined,
+
+		append: function (vtree, props) {
+			var vchild = new VnodeObj(vtree);
 			this.children.push(vchild);
 			return vchild;
+		},
+
+		appendVdom: function (vtree, props, parent) {
+			if (vdomutil.isVdomObj(vtree)) {
+				vtree.props = props;
+				vtree.ref = parent;
+				vtree._vnode = vtree.render();
+				this.children.push(vtree._vnode);
+				return vtree._vnode;
+			}
+			else {
+				vdomutil.throwError('Appending node is not an instance of VtreeObj');
+			}
 		},
 
 		attr: function (attr, val) {
@@ -264,122 +308,93 @@ function VnodeObj(tag) {
 }
 
 module.exports = VnodeObj;
-},{"./vdomutil":4}],6:[function(require,module,exports){
+},{"./vdomutil":5}],7:[function(require,module,exports){
 'use strict';
 
 var vdomutil = require('./vdomutil');
-var vdomdiff = require('./vdomdiff');
-var VnodeObj = require('./vnodeobj');
 
-function VtreeObj() {}
+function VtreeObj(props) {
 
-VtreeObj.prototype = {
+	return {
+		props: props,
 
-	_vnode: undefined,
+		_vnode: undefined,
 
-	_element: undefined,
+		_parent: undefined,
 
-	_parent: undefined,
+		refs: undefined,
 
-	props: undefined,
+		render: undefined,
 
-	render: undefined,
+		updateNode: function () {
+			// var operations = vdomdiff.diff(this._vnode, this.render());
+			var newVnode = this.render();
+			this._parent.removeChild(this._element);
+			this._parent.appendChild(this.toDomElement(newVnode));
+		},
 
-	node: function (tag) {
-		var	vnode = new VnodeObj(tag);
-		return vnode;
-	},
+		toDomElement: function (vnode) {
+			var self = this;
+			this.checkSchema(vnode);
 
-	updateNode: function () {
-		// var operations = vdomdiff.diff(this._vnode, this.render());
-		var newEle = this.render();
-		this._parent.removeChild(this._element);
-		this._parent.appendChild(this.toDomElement(newEle));
-	},
+			var element = document.createElement(vnode.tag);
 
-	appendElement: function (vdom, parent) {
-		if (!this.isVdom(vdom)) {
-			vdomutil.throwError('Element is not an instance of VdomObj');
-		}
-		vdom._parent = parent;
-		if (vdom._vnode === undefined) {
-			vdom._vnode = vdom.render.call(vdom);
-		}
-		parent.appendChild(vdom.toDomElement(vdom._vnode));
-	},
-
-	createElement: function (obj) {
-		var vdom = new VtreeObj();
-		vdomutil.extend(vdom, obj);
-		return vdom;
-	},
-
-	toDomElement: function (vnode) {
-		var self = this;
-
-		self.checkSchema(vnode);
-
-		var element = document.createElement(vnode.tag);
-
-		self.asignAttr(element, vnode.attribute);
-		self.asignStyle(element, vnode.style);
-		self.asignClass(element, vnode.className);
-		self.asignFunction(element, vnode.funcDic, vnode);
-		element.innerHTML = vnode.innerText;
-		vnode.children.map(function (childNode) {
-			var childEle = self.toDomElement(childNode);
-			if (childEle) {
-				element.appendChild(childEle);
-			}
-		});
-
-		this._element = element;
-		return element;
-	},
-
-	checkSchema: function (vnode) {
-		if (vnode.tag === undefined) {
-			vdomutil.throwError("tag undefined");
-		}
-		if (vnode.attribute === undefined || typeof vnode.attribute !== 'object') {
-			vdomutil.throwError("attr undefined");
-		}
-		if (vnode.children === undefined) {
-			vnode.children = [];
-		}
-	},
-
-	asignAttr: function (element, attrObj) {
-		vdomutil.iterObj(attrObj, function (val, key) {
-			element.setAttribute(key, val);
-		});
-	},
-
-	asignStyle: function (element, styleObj) {
-		vdomutil.iterObj(styleObj, function (val, key) {
-			element.style[key] = val;
-		});
-	},
-
-	asignFunction: function (element, funcDic, vnode) {
-		var self = this;
-		vdomutil.iterObj(funcDic, function (callbackLst, name) {
-			callbackLst.map(function (callback) {
-				element.addEventListener(name, callback.bind(self, vnode, element));
+			this.asignAttr(element, vnode.attribute);
+			this.asignStyle(element, vnode.style);
+			this.asignClass(element, vnode.className);
+			this.asignFunction(element, vnode);
+			element.innerHTML = vnode.innerText;
+			vnode.children.map(function (childNode) {
+				var childEle = self.toDomElement(childNode);
+				if (childEle) {
+					element.appendChild(childEle);
+				}
 			});
-		});
-	},
 
-	asignClass: function (element, classes) {
-		if (classes.length > 0) {
-			element.className = classes.join(' ');
+			this._element = element;
+			return element;
+		},
+
+		checkSchema: function (vnode) {
+			if (vnode.tag === undefined) {
+				vdomutil.throwError("tag undefined");
+			}
+			if (vnode.attribute === undefined || typeof vnode.attribute !== 'object') {
+				vdomutil.throwError("attr undefined");
+			}
+			if (vnode.children === undefined) {
+				vnode.children = [];
+			}
+		},
+
+		asignAttr: function (element, attrObj) {
+			vdomutil.iterObj(attrObj, function (val, key) {
+				element.setAttribute(key, val);
+			});
+		},
+
+		asignStyle: function (element, styleObj) {
+			vdomutil.iterObj(styleObj, function (val, key) {
+				element.style[key] = val;
+			});
+		},
+
+		asignFunction: function (element, vnode) {
+			var self = this;
+			vdomutil.iterObj(vnode.funcDic, function (callbackLst, name) {
+				callbackLst.map(function (callback) {
+					element.addEventListener(name, callback.bind(self, vnode, element));
+				});
+			});
+		},
+
+		asignClass: function (element, classes) {
+			if (classes.length > 0) {
+				element.className = classes.join(' ');
+			}
 		}
-	},
-
-	isVdom: function (obj) {
-		return obj instanceof VtreeObj;
-	}
-};
+	};
+}
 
 module.exports = VtreeObj;
-},{"./vdomdiff":3,"./vdomutil":4,"./vnodeobj":5}]},{},[1])
+},{"./vdomutil":5}]},{},[1])

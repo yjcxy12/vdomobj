@@ -3,8 +3,8 @@
 var vdomutil = require('./vdomutil');
 
 function VnodeObj(tag) {
-
 	return {
+
 		tag: tag,
 
 		innerText: '',
@@ -19,19 +19,25 @@ function VnodeObj(tag) {
 
 		funcDic: {},
 
-		append: function (vdom, props) {
-			var vchild;
-			if (vdomutil.isVdomObj(vdom)) {
-				//todo: bug, should be different objects, not changing properties on the same object.
-				vdom.props = props;
-				vdom._vnode = vdom.render();
-				vchild = vdom._vnode;
-			}
-			else if (typeof vdom === 'string'){
-				vchild = new VnodeObj(vdom);
-			}
+		_element: undefined,
+
+		append: function (vtree, props) {
+			var vchild = new VnodeObj(vtree);
 			this.children.push(vchild);
 			return vchild;
+		},
+
+		appendVdom: function (vtree, props, parent) {
+			if (vdomutil.isVdomObj(vtree)) {
+				vtree.props = props;
+				vtree.ref = parent;
+				vtree._vnode = vtree.render();
+				this.children.push(vtree._vnode);
+				return vtree._vnode;
+			}
+			else {
+				vdomutil.throwError('Appending node is not an instance of VtreeObj');
+			}
 		},
 
 		attr: function (attr, val) {

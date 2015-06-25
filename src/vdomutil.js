@@ -1,3 +1,5 @@
+'use strict';
+
 module.exports = {
 
 	throwError: function (err) {
@@ -24,6 +26,6 @@ module.exports = {
 
 	//duck typing
 	isVdomObj: function (obj) {
-		return typeof obj.isVdom === 'function';
+		return typeof obj.updateNode === 'function';
 	}
 };
